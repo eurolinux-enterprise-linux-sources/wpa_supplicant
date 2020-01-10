@@ -2,7 +2,7 @@ Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
 Version: 0.7.3
-Release: 9%{?dist}
+Release: 9%{?dist}.2
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}.tar.gz
@@ -95,6 +95,14 @@ Patch58: 0057-rh908306-log-rotate.patch
 # Deauthenticate on reconfiguration: rh #1359044
 Patch59: 0058-rh1359044-Deauthenticate-on-reconfiguration.patch
 
+Patch60: rh1495530-0001-Clear-TK-part-of-PTK-after-driver-key-configuration.patch
+Patch61: rh1495530-0002-Fix-TK-configuration-to-the-driver-in-EAPOL-Key-3-4-.patch
+Patch62: rh1495530-0003-Reduce-the-amount-of-time-PTK-TPTK-GTK-is-kept-in-me.patch
+Patch63: rh1495530-0004-Prevent-reinstallation-of-an-already-in-use-group-ke.patch
+Patch64: rh1495530-0005-Prevent-installation-of-an-all-zero-TK.patch
+Patch65: rh1495530-0006-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch
+Patch66: rh1495530-0007-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch
+
 URL: http://w1.fi/wpa_supplicant/
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -176,6 +184,14 @@ Graphical User Interface for wpa_supplicant written using QT
 %patch58 -p1 -b .log-rotate
 
 %patch59 -p1 -b .deauthenticate-on-reconfiguration
+
+%patch60 -p1 -b .rh1495530-0001.patch
+%patch61 -p1 -b .rh1495530-0002.patch
+%patch62 -p1 -b .rh1495530-0003.patch
+%patch63 -p1 -b .rh1495530-0004.patch
+%patch64 -p1 -b .rh1495530-0005.patch
+%patch65 -p1 -b .rh1495530-0006.patch
+%patch66 -p1 -b .rh1495530-0007.patch
 
 %build
 pushd wpa_supplicant
@@ -277,6 +293,13 @@ fi
 %endif
 
 %changelog
+* Wed Oct 18 2017 Davide Caratti <dcaratti@redhat.com> - 1:0.7.3-9.2
+- Fix backport errors (CVE-2017-13077, CVE-2017-13080)
+
+* Sun Oct 15 2017 Davide Caratti <dcaratti@redhat.com> - 1:0.7.3-9.1
+- avoid key reinstallation (CVE-2017-13077, CVE-2017-13078, CVE-2017-13079,
+  CVE-2017-13080, CVE-2017-13081, CVE-2017-13082)
+
 * Thu Aug 25 2016 Davide Caratti <dcaratti@redhat.com> - 1:0.7.3-9
 - Deauthenticate on reconfiguration (rh #1359044)
 
