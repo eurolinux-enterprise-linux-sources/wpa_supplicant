@@ -2,7 +2,7 @@ Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
 Version: 0.7.3
-Release: 8%{?dist}
+Release: 8%{?dist}.1
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}.tar.gz
@@ -92,6 +92,9 @@ Patch57: rh1254486-dont-qoute-scan_freq-and-freq_list.patch
 # reopen debug log file upon receipt of SIGHUP signal
 Patch58: 0057-rh908306-log-rotate.patch
 
+# Deauthenticate on reconfiguration: rh #1372333
+Patch59: 0058-rh1372333-Deauthenticate-on-reconfiguration.patch
+
 URL: http://w1.fi/wpa_supplicant/
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -171,6 +174,8 @@ Graphical User Interface for wpa_supplicant written using QT
 %patch57 -p1 -b .rh1254486-dont-qoute-scan_freq-and-freq_list
 
 %patch58 -p1 -b .log-rotate
+
+%patch59 -p1 -b .deauthenticate-on-reconfiguration
 
 %build
 pushd wpa_supplicant
@@ -272,6 +277,9 @@ fi
 %endif
 
 %changelog
+* Fri Sep  2 2016 Davide Caratti <dcaratti@redhat.com> - 1:0.7.3-8.1
+- Deauthenticate on reconfiguration (rh #1372333)
+
 * Tue Aug 25 2015 Lubomir Rintel <lrintel@redhat.com> - 1:0.7.3-8
 - Enable syslog logging support (rh #822128)
 - Support run-time rotation the debug log file (rh #908306)
