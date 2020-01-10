@@ -2,7 +2,7 @@ Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
 Version: 0.7.3
-Release: 6%{?dist}
+Release: 8%{?dist}
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}.tar.gz
@@ -11,6 +11,11 @@ Source2: %{name}.conf
 Source3: %{name}.init.d
 Source4: %{name}.sysconfig
 Source6: %{name}.logrotate
+
+Requires(post):     /sbin/chkconfig
+Requires(preun):    /usr/bin/killall
+Requires(preun):    /sbin/service
+Requires(preun):    /sbin/service
 
 %define build_gui 1
 %if 0%{?rhel} >= 1
@@ -80,6 +85,12 @@ Patch55: rh1186806-0005-cert_in_cb.patch
 
 # Fix integer underflow in WMM Action frame parser: rh #1221178
 Patch56: 0056-rh1221178-fix-int-unferflow-AP-WMM.patch
+
+# Do not quote values for scan_freq and freq_list: rh #1254486
+Patch57: rh1254486-dont-qoute-scan_freq-and-freq_list.patch
+
+# reopen debug log file upon receipt of SIGHUP signal
+Patch58: 0057-rh908306-log-rotate.patch
 
 URL: http://w1.fi/wpa_supplicant/
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -157,6 +168,9 @@ Graphical User Interface for wpa_supplicant written using QT
 %patch55 -p1 -b .cert-in-cb
 %patch56 -p1 -b .rh1221178-WMM-fix
 
+%patch57 -p1 -b .rh1254486-dont-qoute-scan_freq-and-freq_list
+
+%patch58 -p1 -b .log-rotate
 
 %build
 pushd wpa_supplicant
@@ -258,6 +272,15 @@ fi
 %endif
 
 %changelog
+* Tue Aug 25 2015 Lubomir Rintel <lrintel@redhat.com> - 1:0.7.3-8
+- Enable syslog logging support (rh #822128)
+- Support run-time rotation the debug log file (rh #908306)
+- Fix scriptlet dependencies (rh #712848)
+- Enable timestampes in logs (rh #1150004)
+
+* Tue Aug 18 2015 Jiří Klimeš <jklimes@redhat.com> - 1:0.7.3-7
+- Do not quote value for 'scan_freq' and 'freq_list' (rh #1254486)
+
 * Mon Jun  1 2015 Jiří Klimeš <jklimes@redhat.com> - 1:0.7.3-6
 - AP WMM: Fix integer underflow in WMM Action frame parser (rh #1221178) (rh #1226396)
 

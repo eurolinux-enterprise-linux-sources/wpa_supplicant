@@ -58,7 +58,9 @@ restart() {
 }
 
 reload() {
-	restart
+	echo -n $"Reloading $prog: "
+	killproc $prog -HUP
+	echo
 }
 
 force_reload() {
