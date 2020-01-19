@@ -1,0 +1,86 @@
+From 3a5179e49fbbd5eb3df00e476e380915dd84eb05 Mon Sep 17 00:00:00 2001
+From: Jouni Malinen <j@w1.fi>
+Date: Sun, 22 Feb 2015 18:03:42 +0200
+Subject: [PATCH] nl80211: Resubscribe to nl80211 events on global nl_event
+ socket
+
+This allows wpa_supplicant to recover from some of the cases where
+cfg80211 is unloaded and reloaded without restarting wpa_supplicant. The
+netlink socket used for nl80211 events (global->nl_event) seemed to end
+up in otherwise functionality state, but with all the event memberships
+lost when cfg80211 gets reloaded.
+
+There does not seem to be any clear way of determining when this has
+happened, so it looks simplest to just try to re-subscribe to all the
+events whenever an interface is re-enabled or added.
+
+[lkundrak@v3.sk: 2.0 backport]
+
+Signed-off-by: Jouni Malinen <j@w1.fi>
+(cherry picked from commit f51f54a007e0de1d413dee3523472d3bbeed2ecc)
+---
+ src/drivers/driver_nl80211.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 37b6be9..097265c 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -184,6 +184,7 @@ struct nl80211_wiphy_data {
+ };
+ 
+ static void nl80211_global_deinit(void *priv);
++static void nl80211_check_global(struct nl80211_global *global);
+ static void wpa_driver_nl80211_deinit(void *priv);
+ 
+ struct i802_bss {
+@@ -852,6 +853,7 @@ static int wpa_driver_nl80211_own_ifindex(struct wpa_driver_nl80211_data *drv,
+ 		return 1;
+ 
+ 	if (drv->if_removed && wpa_driver_nl80211_own_ifname(drv, buf, len)) {
++		nl80211_check_global(drv->global);
+ 		drv->first_bss.ifindex = if_nametoindex(drv->first_bss.ifname);
+ 		wpa_printf(MSG_DEBUG, "nl80211: Update ifindex for a removed "
+ 			   "interface");
+@@ -2918,6 +2920,30 @@ static int wpa_driver_nl80211_init_nl(struct wpa_driver_nl80211_data *drv)
+ }
+ 
+ 
++static void nl80211_check_global(struct nl80211_global *global)
++{
++	const char *groups[] = { "scan", "mlme", "regulatory", "vendor", NULL };
++	int ret;
++	unsigned int i;
++
++	/*
++	 * Try to re-add memberships to handle case of cfg80211 getting reloaded
++	 * and all registration having been cleared.
++	 */
++
++	for (i = 0; groups[i]; i++) {
++		ret = nl_get_multicast_id(global, "nl80211", groups[i]);
++		if (ret >= 0)
++			ret = nl_socket_add_membership(global->nl_event, ret);
++		if (ret < 0) {
++			wpa_printf(MSG_INFO,
++				   "nl80211: Could not re-add multicast membership for %s events: %d (%s)",
++				   groups[i], ret, strerror(-ret));
++		}
++	}
++}
++
++
+ static void wpa_driver_nl80211_rfkill_blocked(void *ctx)
+ {
+ 	wpa_printf(MSG_DEBUG, "nl80211: RFKILL blocked");
+@@ -3137,6 +3163,7 @@ static void * wpa_driver_nl80211_init(void *ctx, const char *ifname,
+ 	}
+ 
+ 	if (drv->global) {
++		nl80211_check_global(drv->global);
+ 		dl_list_add(&drv->global->interfaces, &drv->list);
+ 		drv->in_interface_list = 1;
+ 	}
+-- 
+2.5.0
+
