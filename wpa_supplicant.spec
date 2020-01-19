@@ -7,7 +7,7 @@ Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
 Version: 2.6
-Release: 5%{?dist}.1
+Release: 9%{?dist}
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}%{rcver}%{snapshot}.tar.gz
@@ -77,14 +77,16 @@ Patch43: macsec-0035-mka-Send-MKPDUs-forever-if-mode-is-PSK.patch
 # upstream patch not in 2.6
 Patch44: rh1447073-nl80211-Fix-race-condition-in-detecting-MAC-change.patch
 Patch45: rh1440646-macsec_linux-Fix-NULL-pointer-dereference-on-error-c.patch
-Patch46: rh1495528-0001-hostapd-Avoid-key-reinstallation-in-FT-handshake.patch
-Patch47: rh1495528-0002-Prevent-reinstallation-of-an-already-in-use-group-ke.patch
-Patch48: rh1495528-0003-Extend-protection-of-GTK-IGTK-reinstallation-of-WNM-.patch
-Patch49: rh1495528-0004-Prevent-installation-of-an-all-zero-TK.patch
-Patch50: rh1495528-0005-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch
-Patch51: rh1495528-0006-TDLS-Reject-TPK-TK-reconfiguration.patch
-Patch52: rh1495528-0007-WNM-Ignore-WNM-Sleep-Mode-Response-without-pending-r.patch
-Patch53: rh1495528-0008-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch
+Patch46: rh1489919-mka-Add-error-handling-for-secy_init_macsec-calls.patch
+Patch47: rh1495527-0001-hostapd-Avoid-key-reinstallation-in-FT-handshake.patch
+Patch48: rh1495527-0002-Prevent-reinstallation-of-an-already-in-use-group-ke.patch
+Patch49: rh1495527-0003-Extend-protection-of-GTK-IGTK-reinstallation-of-WNM-.patch
+Patch50: rh1495527-0004-Prevent-installation-of-an-all-zero-TK.patch
+Patch51: rh1495527-0005-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch
+Patch52: rh1495527-0006-TDLS-Reject-TPK-TK-reconfiguration.patch
+Patch53: rh1495527-0007-WNM-Ignore-WNM-Sleep-Mode-Response-without-pending-r.patch
+Patch54: rh1495527-0008-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch
+Patch55: rh1531254-common-Avoid-conflict-with-__bitwise-macro-from-linu.patch
 
 URL: http://w1.fi/wpa_supplicant/
 
@@ -170,21 +172,23 @@ cp %{SOURCE8} src/linux/if_link.h
 %patch43 -p1 -b .macsec-0035
 %patch44 -p1 -b .rh1447073-detect-mac-change
 %patch45 -p1 -b .rh1440646-macsec-segfault
-%patch46 -p1 -b .rh1495528-0001
-%patch47 -p1 -b .rh1495528-0002
-%patch48 -p1 -b .rh1495528-0003
-%patch49 -p1 -b .rh1495528-0004
-%patch50 -p1 -b .rh1495528-0005
-%patch51 -p1 -b .rh1495528-0006
-%patch52 -p1 -b .rh1495528-0007
-%patch53 -p1 -b .rh1495528-0008
+%patch46 -p1 -b .rh1489919-macsec-eapol-segfault
+%patch47 -p1 -b .rh1495527-0001
+%patch48 -p1 -b .rh1495527-0002
+%patch49 -p1 -b .rh1495527-0003
+%patch50 -p1 -b .rh1495527-0004
+%patch51 -p1 -b .rh1495527-0005
+%patch52 -p1 -b .rh1495527-0006
+%patch53 -p1 -b .rh1495527-0007
+%patch54 -p1 -b .rh1495527-0008
+%patch55 -p1 -b .rh1531254-fix-bitwise-redefined
 
 %build
 pushd wpa_supplicant
   cp %{SOURCE1} .config
   CFLAGS="${CFLAGS:-%optflags} -fPIE -DPIE" ; export CFLAGS ;
   CXXFLAGS="${CXXFLAGS:-%optflags} -fPIE -DPIE" ; export CXXFLAGS ;
-  LDFLAGS="${LDFLAGS:-%optflags} -pie -Wl,-z,now" ; export LDFLAGS ;
+  LDFLAGS="${LDFLAGS:-%optflags} -pie -Wl,-z,now,-z,relro" ; export LDFLAGS ;
   # yes, BINDIR=_sbindir
   BINDIR="%{_sbindir}" ; export BINDIR ;
   LIBDIR="%{_libdir}" ; export LIBDIR ;
@@ -293,10 +297,19 @@ fi
 %endif
 
 %changelog
-* Fri Oct 13 2017  Davide Caratti <dcaratti@redhat.com> - 1:2.6-5.1
+* Mon Jan  8 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-9
+- Fix RPMDiff failures on ppc (rh #1532320)
+
+* Fri Jan  5 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-8
+- Fix build issue on kernel-alt (rh #1531254)
+
+* Wed Oct 18 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-7
 - avoid key reinstallation (CVE-2017-13077, CVE-2017-13078, CVE-2017-13079,
   CVE-2017-13080, CVE-2017-13081, CVE-2017-13082, CVE-2017-13086,
   CVE-2017-13087, CVE-2017-13088)
+
+* Thu Oct 05 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-6
+- Fix segmentation fault on EAPOL RX if macsec.ko is not loaded (rh #1489919)
 
 * Wed May 17 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-5
 - macsec: Fix segmentation fault in case macsec.ko is not loaded (rh #1440646)
