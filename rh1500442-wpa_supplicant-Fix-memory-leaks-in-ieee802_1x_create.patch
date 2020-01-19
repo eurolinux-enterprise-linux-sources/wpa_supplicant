@@ -1,0 +1,83 @@
+From 22151b111b493d4604c9490327c40fdac7bc4b37 Mon Sep 17 00:00:00 2001
+Message-Id: <22151b111b493d4604c9490327c40fdac7bc4b37.1525684664.git.davide.caratti@gmail.com>
+From: Davide Caratti <davide.caratti@gmail.com>
+Date: Thu, 8 Mar 2018 17:15:02 +0100
+Subject: [PATCH] wpa_supplicant: Fix memory leaks in
+ ieee802_1x_create_preshared_mka()
+
+In case MKA is initialized successfully, local copies of CAK and CKN
+were allocated, but never freed. Ensure that such memory is released
+also when ieee802_1x_kay_create_mka() returns a valid pointer.
+
+Fixes: ad51731abf06 ("wpa_supplicant: Allow pre-shared (CAK,CKN) pair for MKA")
+Signed-off-by: Davide Caratti <davide.caratti@gmail.com>
+---
+ wpa_supplicant/wpas_kay.c | 32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
+
+diff --git a/wpa_supplicant/wpas_kay.c b/wpa_supplicant/wpas_kay.c
+index 11708b8a6..d3d06b8ae 100644
+--- a/wpa_supplicant/wpas_kay.c
++++ b/wpa_supplicant/wpas_kay.c
+@@ -392,25 +392,25 @@ void * ieee802_1x_create_preshared_mka(struct wpa_supplicant *wpa_s,
+ {
+ 	struct mka_key *cak;
+ 	struct mka_key_name *ckn;
+-	void *res;
++	void *res = NULL;
+ 
+ 	if ((ssid->mka_psk_set & MKA_PSK_SET) != MKA_PSK_SET)
+-		return NULL;
+-
+-	if (ieee802_1x_alloc_kay_sm(wpa_s, ssid) < 0)
+-		return NULL;
+-
+-	if (!wpa_s->kay || wpa_s->kay->policy == DO_NOT_SECURE)
+-		return NULL;
++		goto end;
+ 
+ 	ckn = os_zalloc(sizeof(*ckn));
+ 	if (!ckn)
+-		goto dealloc;
++		goto end;
+ 
+ 	cak = os_zalloc(sizeof(*cak));
+ 	if (!cak)
+ 		goto free_ckn;
+ 
++	if (ieee802_1x_alloc_kay_sm(wpa_s, ssid) < 0 || !wpa_s->kay)
++		goto free_cak;
++
++	if (wpa_s->kay->policy == DO_NOT_SECURE)
++		goto dealloc;
++
+ 	cak->len = MACSEC_CAK_LEN;
+ 	os_memcpy(cak->key, ssid->mka_cak, cak->len);
+ 
+@@ -419,17 +419,15 @@ void * ieee802_1x_create_preshared_mka(struct wpa_supplicant *wpa_s,
+ 
+ 	res = ieee802_1x_kay_create_mka(wpa_s->kay, ckn, cak, 0, PSK, FALSE);
+ 	if (res)
+-		return res;
++		goto free_cak;
+ 
++dealloc:
+ 	/* Failed to create MKA */
++	ieee802_1x_dealloc_kay_sm(wpa_s);
++free_cak:
+ 	os_free(cak);
+-
+-	/* fallthrough */
+-
+ free_ckn:
+ 	os_free(ckn);
+-dealloc:
+-	ieee802_1x_dealloc_kay_sm(wpa_s);
+-
+-	return NULL;
++end:
++	return res;
+ }
+-- 
+2.14.3
+

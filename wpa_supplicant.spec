@@ -6,8 +6,8 @@
 Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
-Version: 2.0
-Release: 21%{?dist}
+Version: 2.6
+Release: 12%{?dist}
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}%{rcver}%{snapshot}.tar.gz
@@ -16,10 +16,18 @@ Source2: %{name}.conf
 Source3: %{name}.service
 Source4: %{name}.sysconfig
 Source6: %{name}.logrotate
+Source7: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/include/uapi/linux/if_macsec.h?h=v4.10#/if_macsec.h
+Source8: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/include/uapi/linux/if_link.h?h=v4.10#/if_link.h
 
 %define build_gui 1
 %if 0%{?rhel} >= 1
 %define build_gui 0
+%endif
+
+# RHEL-7 doesn't define _rundir macro yet
+# Fedora 15 onwards uses /run as _rundir
+%if 0%{!?_rundir:1}
+%define _rundir /run
 %endif
 
 # distro specific customization and not suitable for upstream,
@@ -32,29 +40,63 @@ Patch1: wpa_supplicant-flush-debug-output.patch
 Patch2: wpa_supplicant-dbus-service-file-args.patch
 # quiet an annoying and frequent syslog message
 Patch3: wpa_supplicant-quiet-scan-results-message.patch
-# allow more private key encryption algorithms
-Patch5: wpa_supplicant-openssl-more-algs.patch
 # distro specific customization for Qt4 build tools, not suitable for upstream
 Patch6: wpa_supplicant-gui-qt4.patch
-# Fix libnl3 includes path
-Patch7: libnl3-includes.patch
 # Less aggressive roaming; signal strength is wildly variable
 Patch8: rh837402-less-aggressive-roaming.patch
-# Add missing command-line options to man page, also filed upstream
-Patch9: rh948453-man-page.patch
-# Don't evict current AP from PMKSA cache when it's large
-Patch10: rh1032758-fix-pmksa-cache-entry-clearing.patch
-# CVE-2014-3686
-Patch11: 0001-Add-os_exec-helper-to-run-external-programs.patch
-Patch12: 0002-wpa_cli-Use-os_exec-for-action-script-execution.patch
-Patch13: 0013-rh1178263-domain_match.patch
-Patch14: 0014-rh1178263-cert_in_cb.patch
-Patch15: 0015-CVE-2015-1863-p2p-ssid.patch
-# Fix integer underflow in WMM Action frame parser: rh #1221178
-Patch16: 0016-rh1221178-fix-int-unferflow-AP-WMM.patch
-# Resubscribe to netlink events when cfg80211 module gets removed and added
-Patch17: 0017-rh1085473-nl-event-resubscribe.patch
-Patch18: 0018-rh1319796-dbus-deny-interface.patch
+# backport of macsec series
+Patch9: macsec-0001-mka-Move-structs-transmit-receive-_-sa-sc-to-a-commo.patch
+Patch10: macsec-0002-mka-Pass-full-structures-down-to-macsec-drivers-pack.patch
+Patch11: macsec-0003-mka-Pass-full-structures-down-to-macsec-drivers-tran.patch
+Patch12: macsec-0004-mka-Pass-full-structures-down-to-macsec-drivers-rece.patch
+Patch13: macsec-0005-mka-Pass-full-structures-down-to-macsec-drivers-tran.patch
+Patch14: macsec-0006-mka-Pass-full-structures-down-to-macsec-drivers-rece.patch
+Patch15: macsec-0007-mka-Add-driver-op-to-get-macsec-capabilities.patch
+Patch16: macsec-0008-mka-Remove-channel-hacks-from-the-stack-and-the-macs.patch
+Patch17: macsec-0009-mka-Sync-structs-definitions-with-IEEE-Std-802.1X-20.patch
+Patch18: macsec-0010-mka-Add-support-for-removing-SAs.patch
+Patch19: macsec-0011-mka-Implement-reference-counting-on-data_key.patch
+Patch20: macsec-0012-mka-Fix-getting-capabilities-from-the-driver.patch
+Patch21: macsec-0013-wpa_supplicant-Allow-pre-shared-CAK-CKN-pair-for-MKA.patch
+Patch22: macsec-0014-mka-Disable-peer-detection-timeout-for-PSK-mode.patch
+Patch23: macsec-0015-wpa_supplicant-Add-macsec_integ_only-setting-for-MKA.patch
+Patch24: macsec-0016-mka-Add-enable_encrypt-op-and-call-it-from-CP-state-.patch
+Patch25: macsec-0017-wpa_supplicant-Allow-configuring-the-MACsec-port-for.patch
+Patch26: macsec-0018-drivers-Move-common-definitions-for-wired-drivers-ou.patch
+Patch27: macsec-0019-drivers-Move-wired_multicast_membership-to-a-common-.patch
+Patch28: macsec-0020-drivers-Move-driver_wired_multi-to-a-common-file.patch
+Patch29: macsec-0021-drivers-Move-driver_wired_get_ifflags-to-a-common-fi.patch
+Patch30: macsec-0022-drivers-Move-driver_wired_set_ifflags-to-a-common-fi.patch
+Patch31: macsec-0023-drivers-Move-driver_wired_get_ifstatus-to-a-common-f.patch
+Patch32: macsec-0024-drivers-Move-driver_wired_init_common-to-a-common-fi.patch
+Patch33: macsec-0025-drivers-Move-driver_wired_deinit_common-to-a-common-.patch
+Patch34: macsec-0026-drivers-Move-driver_wired_get_capa-to-a-common-file.patch
+Patch35: macsec-0027-drivers-Move-driver_wired_get_bssid-to-a-common-file.patch
+Patch36: macsec-0028-drivers-Move-driver_wired_get_ssid-to-a-common-file.patch
+Patch37: macsec-0029-macsec_linux-Add-a-driver-for-macsec-on-Linux-kernel.patch
+Patch38: macsec-0030-mka-Remove-references-to-macsec_qca-from-wpa_supplic.patch
+Patch39: macsec-0031-PAE-Make-KaY-specific-details-available-via-control-.patch
+Patch40: macsec-0032-mka-Make-MKA-actor-priority-configurable.patch
+Patch41: macsec-0033-mka-Fix-an-incorrect-update-of-participant-to_use_sa.patch
+Patch42: macsec-0034-mka-Some-bug-fixes-for-MACsec-in-PSK-mode.patch
+Patch43: macsec-0035-mka-Send-MKPDUs-forever-if-mode-is-PSK.patch
+# upstream patch not in 2.6
+Patch44: rh1447073-nl80211-Fix-race-condition-in-detecting-MAC-change.patch
+Patch45: rh1440646-macsec_linux-Fix-NULL-pointer-dereference-on-error-c.patch
+Patch46: rh1489919-mka-Add-error-handling-for-secy_init_macsec-calls.patch
+Patch47: rh1495527-0001-hostapd-Avoid-key-reinstallation-in-FT-handshake.patch
+Patch48: rh1495527-0002-Prevent-reinstallation-of-an-already-in-use-group-ke.patch
+Patch49: rh1495527-0003-Extend-protection-of-GTK-IGTK-reinstallation-of-WNM-.patch
+Patch50: rh1495527-0004-Prevent-installation-of-an-all-zero-TK.patch
+Patch51: rh1495527-0005-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch
+Patch52: rh1495527-0006-TDLS-Reject-TPK-TK-reconfiguration.patch
+Patch53: rh1495527-0007-WNM-Ignore-WNM-Sleep-Mode-Response-without-pending-r.patch
+Patch54: rh1495527-0008-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch
+Patch55: rh1531254-common-Avoid-conflict-with-__bitwise-macro-from-linu.patch
+Patch56: rh1434434-wpa_supplicant-Don-t-reply-to-EAPOL-if-pkt_type-is-P.patch
+Patch57: rh1490885-fix-auth-failure-when-the-mac-is-updated-externally.patch
+Patch58: rh1500442-wpa_supplicant-Fix-memory-leaks-in-ieee802_1x_create.patch
+Patch59: rh1619553-0001-WPA-Ignore-unauthenticated-encrypted-EAPOL-Key-data.patch
 
 URL: http://w1.fi/wpa_supplicant/
 
@@ -92,43 +134,87 @@ Graphical User Interface for wpa_supplicant written using QT
 
 %prep
 %setup -q -n %{name}-%{version}%{rcver}
+
+mkdir -p src/linux
+cp %{SOURCE7} src/linux/if_macsec.h
+cp %{SOURCE8} src/linux/if_link.h
+
 %patch0 -p1 -b .assoc-timeout
 %patch1 -p1 -b .flush-debug-output
 %patch2 -p1 -b .dbus-service-file
 %patch3 -p1 -b .quiet-scan-results-msg
-%patch5 -p1 -b .more-openssl-algs
 %patch6 -p1 -b .qt4
-%patch7 -p1 -b .libnl3
 %patch8 -p1 -b .rh837402-less-aggressive-roaming
-%patch9 -p1 -b .man-page
-%patch10 -p1 -b .pmksa-clear-fix
-%patch11 -p1 -b .CVE-2014-3686-1
-%patch12 -p1 -b .CVE-2014-3686-2
-%patch13 -p1 -b .domain-match
-%patch14 -p1 -b .cert-in-cb
-%patch15 -p1 -b .CVE-2015-1863
-%patch16 -p1 -b .rh1221178-WMM-fix
-%patch17 -p1 -b .rh1085473-nl-event-resubscribe
-%patch18 -p1 -b .rh1319796-dbus-deny-interface
+%patch9 -p1 -b .macsec-0001
+%patch10 -p1 -b .macsec-0002
+%patch11 -p1 -b .macsec-0003
+%patch12 -p1 -b .macsec-0004
+%patch13 -p1 -b .macsec-0005
+%patch14 -p1 -b .macsec-0006
+%patch15 -p1 -b .macsec-0007
+%patch16 -p1 -b .macsec-0008
+%patch17 -p1 -b .macsec-0009
+%patch18 -p1 -b .macsec-0010
+%patch19 -p1 -b .macsec-0011
+%patch20 -p1 -b .macsec-0012
+%patch21 -p1 -b .macsec-0013
+%patch22 -p1 -b .macsec-0014
+%patch23 -p1 -b .macsec-0015
+%patch24 -p1 -b .macsec-0016
+%patch25 -p1 -b .macsec-0017
+%patch26 -p1 -b .macsec-0018
+%patch27 -p1 -b .macsec-0019
+%patch28 -p1 -b .macsec-0020
+%patch29 -p1 -b .macsec-0021
+%patch30 -p1 -b .macsec-0022
+%patch31 -p1 -b .macsec-0023
+%patch32 -p1 -b .macsec-0024
+%patch33 -p1 -b .macsec-0025
+%patch34 -p1 -b .macsec-0026
+%patch35 -p1 -b .macsec-0027
+%patch36 -p1 -b .macsec-0028
+%patch37 -p1 -b .macsec-0029
+%patch38 -p1 -b .macsec-0030
+%patch39 -p1 -b .macsec-0031
+%patch40 -p1 -b .macsec-0032
+%patch41 -p1 -b .macsec-0033
+%patch42 -p1 -b .macsec-0034
+%patch43 -p1 -b .macsec-0035
+%patch44 -p1 -b .rh1447073-detect-mac-change
+%patch45 -p1 -b .rh1440646-macsec-segfault
+%patch46 -p1 -b .rh1489919-macsec-eapol-segfault
+%patch47 -p1 -b .rh1495527-0001
+%patch48 -p1 -b .rh1495527-0002
+%patch49 -p1 -b .rh1495527-0003
+%patch50 -p1 -b .rh1495527-0004
+%patch51 -p1 -b .rh1495527-0005
+%patch52 -p1 -b .rh1495527-0006
+%patch53 -p1 -b .rh1495527-0007
+%patch54 -p1 -b .rh1495527-0008
+%patch55 -p1 -b .rh1531254-fix-bitwise-redefined
+%patch56 -p1 -b .rh1434434-fix-pkt_otherhost
+%patch57 -p1 -b .rh1490885-mac-changed-event
+%patch58 -p1 -b .rh1500442-macsec-memleak
+%patch59 -p1 -b .rh1619553-ignore-unauth-eapol
 
 %build
 pushd wpa_supplicant
   cp %{SOURCE1} .config
   CFLAGS="${CFLAGS:-%optflags} -fPIE -DPIE" ; export CFLAGS ;
   CXXFLAGS="${CXXFLAGS:-%optflags} -fPIE -DPIE" ; export CXXFLAGS ;
-  LDFLAGS="${LDFLAGS:-%optflags} -pie -Wl,-z,now" ; export LDFLAGS ;
+  LDFLAGS="${LDFLAGS:-%optflags} -pie -Wl,-z,now,-z,relro" ; export LDFLAGS ;
   # yes, BINDIR=_sbindir
   BINDIR="%{_sbindir}" ; export BINDIR ;
   LIBDIR="%{_libdir}" ; export LIBDIR ;
-  make %{_smp_mflags}
+  make %{_smp_mflags} V=1
 %if %{build_gui}
   QTDIR=%{_libdir}/qt4 make wpa_gui-qt4 %{_smp_mflags}
 %endif
-  make eapol_test
+  make eapol_test V=1
 popd
 
 pushd wpa_supplicant/doc/docbook
-  make
+  make man V=1
 popd
 
 %install
@@ -156,8 +242,7 @@ install -d %{buildroot}/%{_bindir}
 install -m 0755 %{name}/wpa_gui-qt4/wpa_gui %{buildroot}/%{_bindir}
 %endif
 
-# running
-mkdir -p %{buildroot}/%{_localstatedir}/run/%{name}
+install -d -m 0755 %{buildroot}%{_rundir}/%{name}
 
 # man pages
 install -d %{buildroot}%{_mandir}/man{5,8}
@@ -182,13 +267,6 @@ if [ $1 -eq 0 ] ; then
     /bin/systemctl stop wpa_supplicant.service > /dev/null 2>&1 || :
 fi
 
-%postun
-/bin/systemctl daemon-reload >/dev/null 2>&1 || :
-if [ $1 -ge 1 ] ; then
-    # Package upgrade, not uninstall
-    /bin/systemctl try-restart wpa_supplicant.service >/dev/null 2>&1 || :
-fi
-
 %triggerun -- wpa_supplicant < 0.7.3-10
 # Save the current service runlevel info
 # User must manually run systemd-sysv-convert --apply wpa_supplicant
@@ -201,7 +279,8 @@ fi
 
 
 %files
-%doc COPYING %{name}/ChangeLog README %{name}/eap_testing.txt %{name}/todo.txt %{name}/wpa_supplicant.conf %{name}/examples
+%license COPYING
+%doc %{name}/ChangeLog README %{name}/eap_testing.txt %{name}/todo.txt %{name}/wpa_supplicant.conf %{name}/examples
 %config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/%{name}
 %config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
@@ -213,7 +292,7 @@ fi
 %{_sbindir}/wpa_supplicant
 %{_sbindir}/wpa_cli
 %{_sbindir}/eapol_test
-%dir %{_localstatedir}/run/%{name}
+%ghost %attr(755,root,root) %verify(not owner group) %{_rundir}/%{name}
 %dir %{_sysconfdir}/%{name}
 %{_mandir}/man8/*
 %{_mandir}/man5/*
@@ -224,6 +303,52 @@ fi
 %endif
 
 %changelog
+* Tue Aug 28 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-12
+- Ignore unauthenticated encrypted EAPOL-Key data (CVE-2018-14526)
+
+* Fri Jun  1 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-11
+- Better handling of /run/wpa_supplicant (rh #1507919)
+
+* Fri May 18 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-10
+- Fix memory leak when macsec MKA/PSK is used (rh #1500442)
+- Fix authentication failure when the MAC is updated externally (rh #1490885)
+- Let the kernel discard EAPOL if packet type is PACKET_OTHERHOST (rh #1434434)
+- Don't restart wpa_supplicant.service on package upgrade (rh #1505404)
+- Don't own a directory in /run/ (rh #1507919)
+
+* Mon Jan  8 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-9
+- Fix RPMDiff failures on ppc (rh #1532320)
+
+* Fri Jan  5 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-8
+- Fix build issue on kernel-alt (rh #1531254)
+
+* Wed Oct 18 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-7
+- avoid key reinstallation (CVE-2017-13077, CVE-2017-13078, CVE-2017-13079,
+  CVE-2017-13080, CVE-2017-13081, CVE-2017-13082, CVE-2017-13086,
+  CVE-2017-13087, CVE-2017-13088)
+
+* Thu Oct 05 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-6
+- Fix segmentation fault on EAPOL RX if macsec.ko is not loaded (rh #1489919)
+
+* Wed May 17 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-5
+- macsec: Fix segmentation fault in case macsec.ko is not loaded (rh #1440646)
+- nl80211: Fix race condition in detecting MAC change (rh #1447073)
+
+* Mon Apr  3 2017 Lubomir Rintel <lrintel@redhat.com> - 1:2.6-4
+- Include MACsec headers (rh #1438007)
+
+* Fri Mar 10 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-3
+- Fix coverity failures (rh #1430407)
+
+* Tue Mar  7 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-2
+- Backport support for IEEE 802.1AE MACsec (rh #1338005)
+
+* Fri Feb 10 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-1
+- Update to 2.6 (rh #1404793)
+
+* Fri Dec 16 2016 Davide Caratti <dcaratti@redhat.com> - 1:2.0-22
+- bump revision for RHEL7.4 rebuild
+
 * Tue Aug  9 2016 Davide Caratti <dcaratti@redhat.com> - 1:2.0-21
 - fix wpa_supplicant.sysconfig to avoid duplicate -u and -f arguments (rh #1351388)
 
