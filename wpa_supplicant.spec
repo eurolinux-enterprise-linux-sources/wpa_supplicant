@@ -7,7 +7,7 @@ Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
 Version: 2.6
-Release: 12%{?dist}
+Release: 5%{?dist}
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}%{rcver}%{snapshot}.tar.gz
@@ -22,12 +22,6 @@ Source8: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plai
 %define build_gui 1
 %if 0%{?rhel} >= 1
 %define build_gui 0
-%endif
-
-# RHEL-7 doesn't define _rundir macro yet
-# Fedora 15 onwards uses /run as _rundir
-%if 0%{!?_rundir:1}
-%define _rundir /run
 %endif
 
 # distro specific customization and not suitable for upstream,
@@ -83,20 +77,6 @@ Patch43: macsec-0035-mka-Send-MKPDUs-forever-if-mode-is-PSK.patch
 # upstream patch not in 2.6
 Patch44: rh1447073-nl80211-Fix-race-condition-in-detecting-MAC-change.patch
 Patch45: rh1440646-macsec_linux-Fix-NULL-pointer-dereference-on-error-c.patch
-Patch46: rh1489919-mka-Add-error-handling-for-secy_init_macsec-calls.patch
-Patch47: rh1495527-0001-hostapd-Avoid-key-reinstallation-in-FT-handshake.patch
-Patch48: rh1495527-0002-Prevent-reinstallation-of-an-already-in-use-group-ke.patch
-Patch49: rh1495527-0003-Extend-protection-of-GTK-IGTK-reinstallation-of-WNM-.patch
-Patch50: rh1495527-0004-Prevent-installation-of-an-all-zero-TK.patch
-Patch51: rh1495527-0005-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch
-Patch52: rh1495527-0006-TDLS-Reject-TPK-TK-reconfiguration.patch
-Patch53: rh1495527-0007-WNM-Ignore-WNM-Sleep-Mode-Response-without-pending-r.patch
-Patch54: rh1495527-0008-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch
-Patch55: rh1531254-common-Avoid-conflict-with-__bitwise-macro-from-linu.patch
-Patch56: rh1434434-wpa_supplicant-Don-t-reply-to-EAPOL-if-pkt_type-is-P.patch
-Patch57: rh1490885-fix-auth-failure-when-the-mac-is-updated-externally.patch
-Patch58: rh1500442-wpa_supplicant-Fix-memory-leaks-in-ieee802_1x_create.patch
-Patch59: rh1619553-0001-WPA-Ignore-unauthenticated-encrypted-EAPOL-Key-data.patch
 
 URL: http://w1.fi/wpa_supplicant/
 
@@ -182,27 +162,13 @@ cp %{SOURCE8} src/linux/if_link.h
 %patch43 -p1 -b .macsec-0035
 %patch44 -p1 -b .rh1447073-detect-mac-change
 %patch45 -p1 -b .rh1440646-macsec-segfault
-%patch46 -p1 -b .rh1489919-macsec-eapol-segfault
-%patch47 -p1 -b .rh1495527-0001
-%patch48 -p1 -b .rh1495527-0002
-%patch49 -p1 -b .rh1495527-0003
-%patch50 -p1 -b .rh1495527-0004
-%patch51 -p1 -b .rh1495527-0005
-%patch52 -p1 -b .rh1495527-0006
-%patch53 -p1 -b .rh1495527-0007
-%patch54 -p1 -b .rh1495527-0008
-%patch55 -p1 -b .rh1531254-fix-bitwise-redefined
-%patch56 -p1 -b .rh1434434-fix-pkt_otherhost
-%patch57 -p1 -b .rh1490885-mac-changed-event
-%patch58 -p1 -b .rh1500442-macsec-memleak
-%patch59 -p1 -b .rh1619553-ignore-unauth-eapol
 
 %build
 pushd wpa_supplicant
   cp %{SOURCE1} .config
   CFLAGS="${CFLAGS:-%optflags} -fPIE -DPIE" ; export CFLAGS ;
   CXXFLAGS="${CXXFLAGS:-%optflags} -fPIE -DPIE" ; export CXXFLAGS ;
-  LDFLAGS="${LDFLAGS:-%optflags} -pie -Wl,-z,now,-z,relro" ; export LDFLAGS ;
+  LDFLAGS="${LDFLAGS:-%optflags} -pie -Wl,-z,now" ; export LDFLAGS ;
   # yes, BINDIR=_sbindir
   BINDIR="%{_sbindir}" ; export BINDIR ;
   LIBDIR="%{_libdir}" ; export LIBDIR ;
@@ -242,7 +208,8 @@ install -d %{buildroot}/%{_bindir}
 install -m 0755 %{name}/wpa_gui-qt4/wpa_gui %{buildroot}/%{_bindir}
 %endif
 
-install -d -m 0755 %{buildroot}%{_rundir}/%{name}
+# running
+mkdir -p %{buildroot}/%{_localstatedir}/run/%{name}
 
 # man pages
 install -d %{buildroot}%{_mandir}/man{5,8}
@@ -265,6 +232,13 @@ if [ $1 -eq 0 ] ; then
     # Package removal, not upgrade
     /bin/systemctl --no-reload disable wpa_supplicant.service > /dev/null 2>&1 || :
     /bin/systemctl stop wpa_supplicant.service > /dev/null 2>&1 || :
+fi
+
+%postun
+/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+if [ $1 -ge 1 ] ; then
+    # Package upgrade, not uninstall
+    /bin/systemctl try-restart wpa_supplicant.service >/dev/null 2>&1 || :
 fi
 
 %triggerun -- wpa_supplicant < 0.7.3-10
@@ -292,7 +266,7 @@ fi
 %{_sbindir}/wpa_supplicant
 %{_sbindir}/wpa_cli
 %{_sbindir}/eapol_test
-%ghost %attr(755,root,root) %verify(not owner group) %{_rundir}/%{name}
+%dir %{_localstatedir}/run/%{name}
 %dir %{_sysconfdir}/%{name}
 %{_mandir}/man8/*
 %{_mandir}/man5/*
@@ -303,33 +277,6 @@ fi
 %endif
 
 %changelog
-* Tue Aug 28 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-12
-- Ignore unauthenticated encrypted EAPOL-Key data (CVE-2018-14526)
-
-* Fri Jun  1 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-11
-- Better handling of /run/wpa_supplicant (rh #1507919)
-
-* Fri May 18 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-10
-- Fix memory leak when macsec MKA/PSK is used (rh #1500442)
-- Fix authentication failure when the MAC is updated externally (rh #1490885)
-- Let the kernel discard EAPOL if packet type is PACKET_OTHERHOST (rh #1434434)
-- Don't restart wpa_supplicant.service on package upgrade (rh #1505404)
-- Don't own a directory in /run/ (rh #1507919)
-
-* Mon Jan  8 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-9
-- Fix RPMDiff failures on ppc (rh #1532320)
-
-* Fri Jan  5 2018 Davide Caratti <dcaratti@redhat.com> - 1:2.6-8
-- Fix build issue on kernel-alt (rh #1531254)
-
-* Wed Oct 18 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-7
-- avoid key reinstallation (CVE-2017-13077, CVE-2017-13078, CVE-2017-13079,
-  CVE-2017-13080, CVE-2017-13081, CVE-2017-13082, CVE-2017-13086,
-  CVE-2017-13087, CVE-2017-13088)
-
-* Thu Oct 05 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-6
-- Fix segmentation fault on EAPOL RX if macsec.ko is not loaded (rh #1489919)
-
 * Wed May 17 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-5
 - macsec: Fix segmentation fault in case macsec.ko is not loaded (rh #1440646)
 - nl80211: Fix race condition in detecting MAC change (rh #1447073)
