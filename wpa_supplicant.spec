@@ -7,7 +7,7 @@ Summary: WPA/WPA2/IEEE 802.1X Supplicant
 Name: wpa_supplicant
 Epoch: 1
 Version: 2.6
-Release: 5%{?dist}
+Release: 5%{?dist}.1
 License: BSD
 Group: System Environment/Base
 Source0: http://w1.fi/releases/%{name}-%{version}%{rcver}%{snapshot}.tar.gz
@@ -77,6 +77,14 @@ Patch43: macsec-0035-mka-Send-MKPDUs-forever-if-mode-is-PSK.patch
 # upstream patch not in 2.6
 Patch44: rh1447073-nl80211-Fix-race-condition-in-detecting-MAC-change.patch
 Patch45: rh1440646-macsec_linux-Fix-NULL-pointer-dereference-on-error-c.patch
+Patch46: rh1495528-0001-hostapd-Avoid-key-reinstallation-in-FT-handshake.patch
+Patch47: rh1495528-0002-Prevent-reinstallation-of-an-already-in-use-group-ke.patch
+Patch48: rh1495528-0003-Extend-protection-of-GTK-IGTK-reinstallation-of-WNM-.patch
+Patch49: rh1495528-0004-Prevent-installation-of-an-all-zero-TK.patch
+Patch50: rh1495528-0005-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch
+Patch51: rh1495528-0006-TDLS-Reject-TPK-TK-reconfiguration.patch
+Patch52: rh1495528-0007-WNM-Ignore-WNM-Sleep-Mode-Response-without-pending-r.patch
+Patch53: rh1495528-0008-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch
 
 URL: http://w1.fi/wpa_supplicant/
 
@@ -162,6 +170,14 @@ cp %{SOURCE8} src/linux/if_link.h
 %patch43 -p1 -b .macsec-0035
 %patch44 -p1 -b .rh1447073-detect-mac-change
 %patch45 -p1 -b .rh1440646-macsec-segfault
+%patch46 -p1 -b .rh1495528-0001
+%patch47 -p1 -b .rh1495528-0002
+%patch48 -p1 -b .rh1495528-0003
+%patch49 -p1 -b .rh1495528-0004
+%patch50 -p1 -b .rh1495528-0005
+%patch51 -p1 -b .rh1495528-0006
+%patch52 -p1 -b .rh1495528-0007
+%patch53 -p1 -b .rh1495528-0008
 
 %build
 pushd wpa_supplicant
@@ -277,6 +293,11 @@ fi
 %endif
 
 %changelog
+* Fri Oct 13 2017  Davide Caratti <dcaratti@redhat.com> - 1:2.6-5.1
+- avoid key reinstallation (CVE-2017-13077, CVE-2017-13078, CVE-2017-13079,
+  CVE-2017-13080, CVE-2017-13081, CVE-2017-13082, CVE-2017-13086,
+  CVE-2017-13087, CVE-2017-13088)
+
 * Wed May 17 2017 Davide Caratti <dcaratti@redhat.com> - 1:2.6-5
 - macsec: Fix segmentation fault in case macsec.ko is not loaded (rh #1440646)
 - nl80211: Fix race condition in detecting MAC change (rh #1447073)
